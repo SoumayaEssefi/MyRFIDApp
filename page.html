@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestion de la serrure</title>
+  
+  <!-- CSS pour Toastify -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+  
+  <!-- CSS personnalisé -->
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f9f9f9;
+      color: #333;
+      line-height: 1.6;
+    }
+
+    h1 {
+      color: #007BFF;
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    h2 {
+      color: #0056b3;
+      font-size: 1.8rem;
+      margin-bottom: 10px;
+    }
+
+    form {
+      background: #fff;
+      padding: 20px;
+      margin-bottom: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    form label {
+      display: block;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    form input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      font-size: 1rem;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      margin-bottom: 15px;
+      box-sizing: border-box;
+    }
+
+    form button {
+      background-color: #007BFF;
+      color: #fff;
+      font-size: 1rem;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    form button:hover {
+      background-color: #0056b3;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      background: #fff;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    table thead {
+      background-color: #007BFF;
+      color: white;
+      text-align: left;
+      font-size: 1rem;
+    }
+
+    table th, table td {
+      padding: 10px 15px;
+      text-align: left;
+    }
+
+    table tr:nth-child(even) {
+      background-color: #f2f2f2;
+    }
+
+    table tr:hover {
+      background-color: #e9f5ff;
+    }
+
+    /* Responsiveness */
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 2rem;
+      }
+
+      form, table {
+        margin: 0 auto;
+        width: 90%;
+      }
+
+      table th, table td {
+        padding: 8px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Gestion de la serrure</h1>
+
+  <!-- Ajouter un UID -->
+  <h2>Ajouter un utilisateur</h2>
+  <form id="addUserForm">
+    <label for="uid">UID :</label>
+    <input type="text" id="uid" placeholder="Ex: 03 B0 0B ED" required>
+    <button type="button" id="addUIDBtn">Ajouter</button>
+  </form>
+
+  <!-- Supprimer un UID -->
+  <h2>Supprimer un utilisateur</h2>
+  <form id="deleteUserForm">
+    <label for="deleteUid">UID :</label>
+    <input type="text" id="deleteUid" placeholder="Ex: 03 B0 0B ED" required>
+    <button type="button" id="deleteUIDBtn">Supprimer</button>
+  </form>
+
+  <!-- Logs -->
+  <h2>Consulter les accès</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>UID</th>
+        <th>Statut</th>
+        <th>Date et Heure</th>
+      </tr>
+    </thead>
+    <tbody id="logsTableBody"></tbody>
+  </table>
+
+  <!-- Inclure Toastify -->
+  <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+  <!-- Inclure le fichier -->
+  <script type="module">
+    // Importer Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
+    import { getDatabase, ref, set, remove, onValue } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
+
+    // Configuration Firebase
+    const firebaseConfig = {
+  apiKey: "AIzaSyCdtNPsNhgGKr7NYMhreJRA-BJ1FdUWOGk",  // Remplacez par votre clé API
+  authDomain: "rfid-1a8a4.firebaseapp.com",  // Utilisez le nom de domaine de votre projet Firebase
+  databaseURL: "https://rfid-1a8a4-default-rtdb.firebaseio.com/",  // L'URL de votre base de données Firebase
+  projectId: "rfid-1a8a4",  // Votre ID de projet Firebase
+  storageBucket: "rfid-1a8a4.firebasestorage.app",  // Le bucket de stockage Firebase
+  messagingSenderId: "399366964764",  // L'ID d'expéditeur de message
+  appId: "1:399366964764:android:e83c6fdec2b50f79d701d9",  // ID de l'application Android
+  measurementId: "G-LGVDXJG281"  // ID de mesure pour l'analyse Firebase (si applicable)
+};
+
+
+
+    // Initialisation Firebase
+    const app = initializeApp(firebaseConfig);
+    const database = getDatabase(app);
+
+    // Références Firebase
+    const authorizedUIDsRef = ref(database, "udis");
+    const logsRef = ref(database, "logs");
+
+    // Fonction de notification
+    function showToast(message, isSuccess = true) {
+      Toastify({
+        text: message,
+        duration: 3000,
+        gravity: "top", 
+        position: "center", 
+        backgroundColor: isSuccess ? "green" : "red",
+        stopOnFocus: true,
+      }).showToast();
+    }
+
+    // Ajouter un UID
+    function addUID() {
+      const uid = document.getElementById("uid").value.trim();
+      if (uid === "") {
+        showToast("Le champ UID est vide", false); // Affiche un toast d'erreur si le champ est vide
+        return;
+      }
+
+      // Ajouter l'UID à Firebase
+      set(ref(database, "uids/" + uid), true)
+        .then(() => {
+          showToast("UID ajouté avec succès", true); // Affiche un toast de succès
+        })
+        .catch((error) => {
+          showToast("Erreur : " + error.message, false); // Affiche un toast d'erreur
+        });
+    }
+
+    // Supprimer un UID
+    function deleteUID() {
+      const uid = document.getElementById("deleteUid").value.trim();
+      if (uid === "") {
+        showToast("Le champ UID est vide", false);
+        return;
+      }
+
+      // Supprimer l'UID de Firebase
+      remove(ref(database, "uids/" + uid))
+        .then(() => {
+          showToast("UID supprimé avec succès", true);
+        })
+        .catch((error) => {
+          showToast("Erreur : " + error.message, false);
+        });
+    }
+
+    // Afficher les logs
+    onValue(logsRef, (snapshot) => {
+      const logsTableBody = document.getElementById("logsTableBody");
+      logsTableBody.innerHTML = "";
+      const logs = snapshot.val();
+      if (logs) {
+        Object.entries(logs).forEach(([logId, log]) => {
+          const row = `
+            <tr>
+              <td>${log.uid}</td>
+              <td>${log.status}</td>
+              <td>${log.time} ${log.date}</td>
+            </tr>
+          `;
+          logsTableBody.innerHTML += row;
+        });
+      }
+    });
+
+    // Attendre que le DOM soit prêt
+    document.addEventListener("DOMContentLoaded", () => {
+      // Attacher les événements aux boutons
+      document.getElementById("addUIDBtn").addEventListener("click", addUID);
+      document.getElementById("deleteUIDBtn").addEventListener("click", deleteUID);
+    });
+  </script>
+</body>
+</html
